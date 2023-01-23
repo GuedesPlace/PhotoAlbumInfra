@@ -1,2 +1,2 @@
 # PhotoAlbumInfra
-IAAS for the PhotoAlbum Appliction
+IAAS for the PhotoAlbum Application
