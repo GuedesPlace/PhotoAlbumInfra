@@ -3,6 +3,7 @@ param locationCDN string = 'northeurope'
 
 var storageAccountType = 'Standard_LRS'
 var storageAccountNameWeb = 'saweb${uniqueString(resourceGroup().id)}'
+var endpointName = 'photoalbum${uniqueString(resourceGroup().id)}'
 
 resource storageAccountWeb 'Microsoft.Storage/storageAccounts@2021-08-01' = {
   name: storageAccountNameWeb
@@ -10,7 +11,7 @@ resource storageAccountWeb 'Microsoft.Storage/storageAccounts@2021-08-01' = {
   sku: {
     name: storageAccountType
   }
-  kind: 'Storage'
+  kind: 'StorageV2'
 }
 
 resource contributorRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
@@ -83,7 +84,7 @@ resource profile 'Microsoft.Cdn/profiles@2021-06-01' = {
 
 resource endpoint 'Microsoft.Cdn/profiles/endpoints@2021-06-01' = {
   parent: profile
-  name: 'photo'
+  name: endpointName
   location: locationCDN
   properties: {
     originHostHeader: substring(storageAccountWeb.properties.primaryEndpoints.web,8, length(storageAccountWeb.properties.primaryEndpoints.web)-9)

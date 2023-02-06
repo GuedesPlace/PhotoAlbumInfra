@@ -1,95 +1,10 @@
-@description('The name of the function app that you wish to create.')
-param appName string = 'fnapp${uniqueString(resourceGroup().id)}'
-
+@description('location for resources')
 param location string= resourceGroup().location
 
-var runtime = 'dotnet'
+@description('location for resources')
+param locationCDN string= 'northeurope'
 
-var storageAccountType = 'Standard_LRS'
-
-
-var functionAppName = appName
-var hostingPlanName = appName
-var applicationInsightsName = appName
-var storageAccountNameFunction = 'safun${uniqueString(resourceGroup().id)}'
-var storageAccountNameWeb = 'saweb${uniqueString(resourceGroup().id)}'
-var functionWorkerRuntime = runtime
-
-resource storageAccountFunction 'Microsoft.Storage/storageAccounts@2021-08-01' = {
-  name: storageAccountNameFunction
-  location: location
-  sku: {
-    name: storageAccountType
-  }
-  kind: 'Storage'
-}
-
-resource storageAccountWeb 'Microsoft.Storage/storageAccounts@2021-08-01' = {
-  name: storageAccountNameWeb
-  location: location
-  sku: {
-    name: storageAccountType
-  }
-  kind: 'Storage'
-}
-
-
-resource hostingPlan 'Microsoft.Web/serverfarms@2021-03-01' = {
-  name: hostingPlanName
-  location: location
-  sku: {
-    name: 'Y1'
-    tier: 'Dynamic'
-  }
-  properties: {}
-}
-
-resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
-  name: functionAppName
-  location: location
-  kind: 'functionapp'
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {
-    serverFarmId: hostingPlan.id
-    siteConfig: {
-      appSettings: [
-        {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountNameFunction};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccountFunction.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountNameFunction};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccountFunction.listKeys().keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTSHARE'
-          value: toLower(functionAppName)
-        }
-        {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: '~2'
-        }
-        {
-          name: 'WEBSITE_NODE_DEFAULT_VERSION'
-          value: '~10'
-        }
-        {
-          name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-          value: applicationInsights.properties.InstrumentationKey
-        }
-        {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: functionWorkerRuntime
-        }
-      ]
-      ftpsState: 'FtpsOnly'
-      minTlsVersion: '1.2'
-    }
-    httpsOnly: true
-  }
-}
+var applicationInsightsName = 'ai${uniqueString(resourceGroup().id)}'
 
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
   name: applicationInsightsName
@@ -100,3 +15,24 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
     Request_Source: 'rest'
   }
 }
+
+module web 'web.bicep' = {
+  name:'webSpace'
+  params:{
+    location:location
+    locationCDN:locationCDN
+  }
+}
+module api 'api.bicep' = {
+  name: 'functionApi'
+  params:{
+    location:location
+    instrumentaitionKey:applicationInsights.properties.InstrumentationKey
+  }
+}
+
+output aiConnectionString string = applicationInsights.properties.ConnectionString
+output html5ClientUrl string = web.outputs.cdnWebsiteHost
+output apiUrl string = api.outputs.functionUrl
+output apiVerificationId string = api.outputs.verificationId
+

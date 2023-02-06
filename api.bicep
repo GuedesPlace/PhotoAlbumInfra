@@ -1,18 +1,14 @@
-@description('The name of the function app that you wish to create.')
-param appName string = 'fnapp${uniqueString(resourceGroup().id)}'
-
 param location string= resourceGroup().location
-
-var runtime = 'dotnet'
+@description('instrumentationkey of application insight.')
+param instrumentaitionKey string
 
 var storageAccountType = 'Standard_LRS'
 
 
-var functionAppName = appName
-var hostingPlanName = appName
-var applicationInsightsName = appName
+var functionAppName = 'fn${uniqueString(resourceGroup().id)}'
+var hostingPlanName = 'plan${uniqueString(resourceGroup().id)}'
 var storageAccountNameFunction = 'safun${uniqueString(resourceGroup().id)}'
-var functionWorkerRuntime = runtime
+var functionWorkerRuntime = 'dotnet'
 
 resource storageAccountFunction 'Microsoft.Storage/storageAccounts@2021-08-01' = {
   name: storageAccountNameFunction
@@ -20,7 +16,7 @@ resource storageAccountFunction 'Microsoft.Storage/storageAccounts@2021-08-01' =
   sku: {
     name: storageAccountType
   }
-  kind: 'StoragV2'
+  kind: 'StorageV2'
 }
 
 
@@ -68,7 +64,7 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
         }
         {
           name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-          value: applicationInsights.properties.InstrumentationKey
+          value: instrumentaitionKey
         }
         {
           name: 'FUNCTIONS_WORKER_RUNTIME'
@@ -81,13 +77,5 @@ resource functionApp 'Microsoft.Web/sites@2021-03-01' = {
     httpsOnly: true
   }
 }
-
-resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
-  name: applicationInsightsName
-  location: location
-  kind: 'web'
-  properties: {
-    Application_Type: 'web'
-    Request_Source: 'rest'
-  }
-}
+output functionUrl string = functionApp.properties.defaultHostName
+output verificationId string = functionApp.properties.customDomainVerificationId
